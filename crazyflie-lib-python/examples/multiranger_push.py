@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
 #     ||          ____  _ __
 #  +------+      / __ )(_) /_______________ _____  ___
 #  | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
@@ -91,6 +88,7 @@ if __name__ == '__main__':
 
                     if is_close(multiranger.left):
                         velocity_y -= VELOCITY
+                    print(multiranger.right)
                     if is_close(multiranger.right):
                         velocity_y += VELOCITY
 

@@ -71,11 +71,15 @@ def simple_sequence():
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
         with PositionHlCommander(scf) as pc:
             with Multiranger(scf) as multiranger:
-                for i in xrange(4):
+                for i in range(4):
                     pc.forward(1.0)
                     pc.left(1.0)
                     pc.back(1.0)
                     pc.right(1.0)
+                # pc.up(0.7, velocity=0.1)
+                # print("moving up")
+                # pc.down(0.7, velocity=0.1)
+                # print("moving down")
 
 
 if __name__ == '__main__':
