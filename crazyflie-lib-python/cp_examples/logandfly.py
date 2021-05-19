@@ -82,13 +82,7 @@ class LoggingExample:
         self._lg_stab.add_variable('range.up', 'float')
         self._lg_stab.add_variable('range.left', 'float')
         self._lg_stab.add_variable('range.right', 'float')
-        self._lg_stab.add_variable('range.zrange', 'float') # down
-        self._lg_stab.add_variable('stabilizer.roll', 'float')
-        self._lg_stab.add_variable('stabilizer.pitch', 'float')
-        self._lg_stab.add_variable('stabilizer.yaw', 'float')
-        self._lg_stab.add_variable('stateEstimate.x', 'float')  # estimated X coordinate
-        self._lg_stab.add_variable('stateEstimate.y', 'float')  # estimated Y coordinate
-        self._lg_stab.add_variable('stateEstimate.z', 'float')  # estimated Z coordinate
+        self._lg_stab.add_variable('range.zrange', 'float')
 
         # Adding the configuration cannot be done until a Crazyflie is
         # connected, since we need to check that the variables we

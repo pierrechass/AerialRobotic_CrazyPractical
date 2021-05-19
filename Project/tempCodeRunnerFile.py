@@ -1,1 +1,1 @@
-        drone.connect(scf, verbose=True)
+drone

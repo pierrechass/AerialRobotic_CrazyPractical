@@ -13,6 +13,7 @@ from cflib.crazyflie.log import LogConfig
 
 from utilities import *
 
+MIN_DISTANCE = 200
 
 class quad():
 
@@ -21,6 +22,7 @@ class quad():
                  state=0, default_heigth=0.3, default_vel=0.2):
         self.pos = pos_init
         self.vel = vel
+        self.sensors = None
         self.state = state
         self.default_heigth = default_heigth
         self.default_vel = default_vel
@@ -43,16 +45,56 @@ class quad():
 
     def take_off(self, heigth=0.3):
         self.motion_cmder.take_off(height=0.3, velocity=self.default_vel)
-        # print(taking off)
         self.is_flying = True
-        self.state = 4
+        self.state = 2
+        time.sleep(1)
         return self.state
 
     def global_nav(self):
-        self.motion_cmder
+
+        #Update pos & sensors
+        self.pos =     np.array([self.cb.var_x_history[-1],
+                                 self.cb.var_y_history[-1],
+                                 self.cb.var_z_history[-1]])
+        # print('front',self.cb.front)
+        # print(self.cb.back)
+        # self.sensors = np.array([self.cb.front[-1], self.cb.right[-1], 
+                                #  self.cb.back[-1], self.cb.left[-1]])
+        self.sensors = np.array([self.cb.front[-1], 
+                                 self.cb.back[-1]])
+        # print('global front',self.cb.front[-1])
+        if(self.cb.front[-1] >= MIN_DISTANCE):
+            self.vel = np.array([0.1,0,0])
+        else :
+            self.vel = np.array([0,0,0])
+            self.state = 3
+
+        if self.sensors[-1] < MIN_DISTANCE :
+           self.state = 5
+           print('land')
+        self.motion_cmder.start_linear_motion(self.vel[0], self.vel[1], self.vel[2])
+
         return self.state
 
     def local_nav(self):
+        # print('local-front',self.cb.front[-1])
+        self.pos =     np.array([self.cb.var_x_history[-1],
+                                 self.cb.var_y_history[-1],
+                                 self.cb.var_z_history[-1]])
+        # self.sensors = np.array([self.multiranger.front, self.multiranger.right, 
+        #                          self.multiranger.back, self.multiranger.left])
+        self.sensors = np.array([self.cb.front[-1], 
+                                 self.cb.back[-1]])
+        if(self.cb.front[-1] <= MIN_DISTANCE):
+            self.vel = np.array([0,0.1,0])
+            pos_obstacle = [int(self.pos[0] + self.sensors[0]/10),int(self.pos[1])]
+            self.map.update_map_obstacle(pos_obstacle)
+        else :
+            self.vel = np.array([0,0,0])
+            self.state = 2
+            print('go to global')
+        
+        self.motion_cmder.start_linear_motion(self.vel[0], self.vel[1], self.vel[2])
         return self.state
 
     def land(self, velocity):
@@ -113,9 +155,6 @@ class quad():
                             self.cb.var_z_history[-1]])
 
     def connect(self, scf, verbose=False):
-        self.multiranger = Multiranger(scf)
-        if verbose:
-            print('multiranger connected and configured')
         self.motion_cmder = MotionCommander(scf,
                                             default_height=self.default_heigth)
         if verbose:
@@ -126,5 +165,9 @@ class quad():
                                                     default_height=self.default_heigth)
         if verbose:
             print('Position HL commander connected and configured')
+
+        self.multiranger = Multiranger(scf)
+        if verbose:
+            print('multiranger connected and configured')
 
         return

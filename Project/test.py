@@ -1,6 +1,7 @@
 import logging
 import sys
 import time
+import numpy as np
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
@@ -14,7 +15,7 @@ from drone import quad
 uri = 'radio://0/80/2M/E7E7E7E7E7'
 
 cf = Crazyflie(rw_cache='./cache')
-drone = quad(cf)
+drone = quad(cf, pos_init=np.array([1,1,0]))
 
 states = {
     0 :"idle", 
@@ -49,17 +50,28 @@ if __name__ == '__main__':
 
             if states.get(drone.state) == 'idle' : 
                 drone.take_off()
+                time.sleep(0.1)
+
+            if states.get(drone.state) == 'global' :
+                drone.global_nav()
+                time.sleep(0.1)
+            
+            if states.get(drone.state) == 'local' :
+                drone.local_nav()
+                time.sleep(0.1)
 
             if states.get(drone.state) == 'pad_search' :
                 drone.pad_search()
-
+                time.sleep(0.1)
             if states.get(drone.state) == 'land':
                 drone.land(velocity=0.1)
+                time.sleep(0.1)
 
             if states.get(drone.state) == 'finished':
                 print("ploting logs")
-                drone.cb.plot_log()
+                drone.map.plot_map()
                 keep_flying = False
+
         print("finished")
 
 
