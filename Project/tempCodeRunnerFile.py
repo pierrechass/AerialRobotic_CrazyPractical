@@ -1,3 +1,1 @@
-
-                    
-                    print(is_close(multiranger.back))
+        drone.connect(scf, verbose=True)

@@ -30,7 +30,8 @@ states = {
     2 : "global",
     3 : "local",
     4 : "pad_search",
-    5 : "landing"
+    5 : "land",
+    6 : "finished"
     }
 
 state = 0
