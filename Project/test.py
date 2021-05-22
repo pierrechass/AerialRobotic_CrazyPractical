@@ -15,7 +15,7 @@ from drone import quad
 uri = 'radio://0/80/2M/E7E7E7E7E7'
 
 cf = Crazyflie(rw_cache='./cache')
-drone = quad(cf, pos_init=np.array([1,1,0]))
+drone = quad(cf, pos_init=np.array([100,150,0]))
 
 states = {
     0 :"idle", 
@@ -23,8 +23,9 @@ states = {
     2 : "global",
     3 : "local",
     4 : "pad_search",
-    5 : "land",
-    6 : "finished"
+    5 : "pad_found",
+    6 : "land",
+    7 : "finished"
     }
 
 def is_close(range):
@@ -63,6 +64,12 @@ if __name__ == '__main__':
             if states.get(drone.state) == 'pad_search' :
                 drone.pad_search()
                 time.sleep(0.1)
+            
+            if states.get(drone.state) == 'pad_found' :
+                drone.pad_found()
+                time.sleep(0.1)
+                
+
             if states.get(drone.state) == 'land':
                 drone.land(velocity=0.1)
                 time.sleep(0.1)

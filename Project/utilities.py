@@ -13,18 +13,26 @@ class map_utile():
         3 : center of quadcopter
         4 : landing and starting pads
         """
-        self.map = np.zeros((50,30))
-        self.map[0:14,:] = 2.
-        self.map[34:49,:] = 2.
-        self.map[x_start,y_start] = 3.
+        self.map = np.zeros((100,60)) # One square every 5 cm
+        self.map[0:30,:] = 2.
+        self.map[69:100,:] = 2.
+        self.map[round(x_start/5),round(y_start/5)] = 3.
 
     def update_map_obstacle(self, pos, obstacle = False):
         """
         used to update the map and define the obstacle
         """
-        x1,x2 = max(pos[0]-1,0), min(pos[0]+1,49)
-        y1,y2 = max(pos[1]-1,0), min(pos[1]+1,29)
-        self.map[x1:x2,y1:y2] = 1
+        if pos[0] < 5:
+            pos[0] = 0
+        else :
+            pos[0] =  np.ceil((pos[0])/5).astype(int) -1 
+        if pos[1] < 5:
+            pos[1] = 0
+        else :
+            pos[1] =  np.ceil((pos[1])/5).astype(int) -1
+        print(pos)
+        x1,y1 = pos[0], pos[1]
+        self.map[x1,y1] = 1
         
     def update_map_pos(self, pos):
         """
@@ -43,19 +51,27 @@ class map_utile():
         """
         Update pos of the pad on the map
         """
+
+        print(pos)
+        if start == True :
+            x1, x2 = np.ceil((pos[0]- 15)/5).astype(int)-1, np.ceil((pos[0]+ 15)/5).astype(int)-1
+            y1, y2 = np.ceil((pos[1]- 15)/5).astype(int)-1, np.ceil((pos[1]+ 15)/5).astype(int)-1
+
+            self.map[x1:x2,y1:y2] = 4
+
     def plot_map(self):
         # create discrete colormap
-        cmap = colors.ListedColormap(['red', 'blue', 'green'])
-        bounds = [0,1,2,3]
+        cmap = colors.ListedColormap(['red', 'blue', 'green', 'white', 'black'])
+        bounds = [0,1,2,3,4,5]
         norm = colors.BoundaryNorm(bounds, cmap.N)
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize = (30,30))
         ax.imshow(self.map, cmap=cmap, norm=norm)
 
         # draw gridlines
         ax.grid(which='major', axis='both', linestyle='-', color='k', linewidth=0.1)
-        ax.set_xticks(np.arange(0.5, 50.5, 1))
-        ax.set_yticks(np.arange(0.5, 30.5, 1))
+        ax.set_xticks(np.arange(0.5, 60.5, 1))
+        ax.set_yticks(np.arange(0.5, 100.5, 1))
 
         plt.show()
 
@@ -64,11 +80,55 @@ class calcul():
     def __init__(self):
         pass
 
-    def compute_dist(self):
+    def compute_(self):
         """
         Compute distance from sensors measurement
         """
     
+class find_pad():
+
+    def __init__(self):
+        self.pad_x1=None
+        self.pad_x2=0
+
+        self.pad_y1=0
+        self.pad_y2=0    
+
+        self.states_pad = {
+        1 : "border1", 
+        2 : "border2",
+        3 : "border3",
+        }
+        return
+
+    def find_pad_out(self,var_z_history,var_x_history):
+        min_z=min(var_z_history[-20:-1])
+        max_z=max(var_z_history[-20:-1])
+        find=False
+
+        if (max_z-min_z)>0.035 :
+            ind_z=var_z_history[-10:-1].index(min(var_z_history[-10:-1]))
+            print('ind pad 1',ind_z)
+            self.pad_x1=var_x_history[-10+ind_z]
+            print('pad_1',self.pad_x1)
+            find=True
+        return find
+
+    def find_pad_in(self,var_z_history,var_history,var=0):
+        min_z=min(var_z_history[-20:-1])
+        max_z=max(var_z_history[-20:-1])
+        find=False
+        if (max_z-min_z)>0.035 :
+            ind_z=var_z_history[-10:-1].index(max(var_z_history[-10:-1]))
+            
+            if var==0:
+                self.pad_x2=var_history[-10+ind_z]
+            if var==1:
+                self.pad_y1=var_history[-10+ind_z]
+            if var==2:
+                self.pad_y2=var_history[-10+ind_z]
+            find=True
+        return find
 
 class call_backs():
     def __init__(self, cf):
