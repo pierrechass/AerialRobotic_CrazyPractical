@@ -119,11 +119,11 @@ class find_pad():
             ind_z=var_z_history[-10:-1].index(max(var_z_history[-10:-1]))
             
             if var==0:
-                self.pad_x2=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
+                self.pad_x2=[var_x_history[-20+ind_z],var_y_history[-20+ind_z]]
             if var==1:
-                self.pad_y1=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
+                self.pad_y1=[var_x_history[-20+ind_z],var_y_history[-20+ind_z]]
             if var==2:
-                self.pad_y2=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
+                self.pad_y2=[var_x_history[-20+ind_z],var_y_history[-20+ind_z]]
             find=True
         return find
 
@@ -163,7 +163,7 @@ class call_backs():
         # self._lg_stab.add_variable('range.left', 'float')
         # self._lg_stab.add_variable('range.right', 'float')
 
-        self._lg_range = LogConfig(name='ranger', period_in_ms=200) # We also chhanged the update_period in motion commander
+        self._lg_range = LogConfig(name='ranger', period_in_ms=20) # We also chhanged the update_period in motion commander
         self._lg_range.add_variable('range.front', 'float')
         self._lg_range.add_variable('range.back', 'float')
         self._lg_range.add_variable('range.left', 'float')
