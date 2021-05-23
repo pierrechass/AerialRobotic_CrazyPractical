@@ -30,7 +30,6 @@ class map_utile():
             pos[1] = 0
         else :
             pos[1] =  np.ceil((pos[1])/5).astype(int) -1
-        print(pos)
         x1,y1 = pos[0], pos[1]
         self.map[x1,y1] = 1
         
@@ -51,8 +50,6 @@ class map_utile():
         """
         Update pos of the pad on the map
         """
-
-        print(pos)
         if start == True :
             x1, x2 = np.ceil((pos[0]- 15)/5).astype(int)-1, np.ceil((pos[0]+ 15)/5).astype(int)-1
             y1, y2 = np.ceil((pos[1]- 15)/5).astype(int)-1, np.ceil((pos[1]+ 15)/5).astype(int)-1
@@ -89,10 +86,10 @@ class find_pad():
 
     def __init__(self):
         self.pad_x1=None
-        self.pad_x2=0
+        self.pad_x2=[]
 
-        self.pad_y1=0
-        self.pad_y2=0    
+        self.pad_y1=[]
+        self.pad_y2=[]    
 
         self.states_pad = {
         1 : "border1", 
@@ -101,20 +98,20 @@ class find_pad():
         }
         return
 
-    def find_pad_out(self,var_z_history,var_x_history):
+    def find_pad_out(self,var_z_history,var_x_history,var_y_history):
         min_z=min(var_z_history[-20:-1])
         max_z=max(var_z_history[-20:-1])
         find=False
 
         if (max_z-min_z)>0.035 :
             ind_z=var_z_history[-10:-1].index(min(var_z_history[-10:-1]))
-            print('ind pad 1',ind_z)
-            self.pad_x1=var_x_history[-10+ind_z]
-            print('pad_1',self.pad_x1)
+            
+            self.pad_x1=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
+            
             find=True
         return find
 
-    def find_pad_in(self,var_z_history,var_history,var=0):
+    def find_pad_in(self,var_z_history,var_x_history,var_y_history,var=0):
         min_z=min(var_z_history[-20:-1])
         max_z=max(var_z_history[-20:-1])
         find=False
@@ -122,11 +119,11 @@ class find_pad():
             ind_z=var_z_history[-10:-1].index(max(var_z_history[-10:-1]))
             
             if var==0:
-                self.pad_x2=var_history[-10+ind_z]
+                self.pad_x2=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
             if var==1:
-                self.pad_y1=var_history[-10+ind_z]
+                self.pad_y1=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
             if var==2:
-                self.pad_y2=var_history[-10+ind_z]
+                self.pad_y2=[var_x_history[-10+ind_z],var_y_history[-10+ind_z]]
             find=True
         return find
 
@@ -161,31 +158,32 @@ class call_backs():
         self._lg_stab.add_variable('stateEstimate.x', 'float')  # estimated X coordinate
         self._lg_stab.add_variable('stateEstimate.y', 'float')  # estimated Y coordinate
         self._lg_stab.add_variable('stateEstimate.z', 'float')  # estimated Z coordinate
-        self._lg_stab.add_variable('range.front', 'float')
-        self._lg_stab.add_variable('range.back', 'float')
+        # self._lg_stab.add_variable('range.front', 'float')
+        # self._lg_stab.add_variable('range.back', 'float')
         # self._lg_stab.add_variable('range.left', 'float')
         # self._lg_stab.add_variable('range.right', 'float')
 
-        # self._lg_range = LogConfig(name='ranger', period_in_ms=200) # We also chhanged the update_period in motion commander
-        # self._lg_range.add_variable('range.front', 'float')
-        # self._lg_range.add_variable('range.back', 'float')
-        # self._lg_range.add_variable('range.left', 'float')
-        # self._lg_range.add_variable('range.right', 'float')
+        self._lg_range = LogConfig(name='ranger', period_in_ms=200) # We also chhanged the update_period in motion commander
+        self._lg_range.add_variable('range.front', 'float')
+        self._lg_range.add_variable('range.back', 'float')
+        self._lg_range.add_variable('range.left', 'float')
+        self._lg_range.add_variable('range.right', 'float')
 
         # Adding the configuration cannot be done until a Crazyflie is
         # connected, since we need to check that the variables we
         # would like to log are in the TOC.
         try:
             self._cf.log.add_config(self._lg_stab)
-            # self._cf.log.add_config(self._lg_range)
+            self._cf.log.add_config(self._lg_range)
             # # This callback will receive the data
             # self._lg_stab.data_received_cb.add_callback(self._stab_log_data)
             self._lg_stab.data_received_cb.add_callback(self._get_pos)
-            # self._lg_range.data_received_cb.add_callback(self._get_range)
+            self._lg_range.data_received_cb.add_callback(self._get_range)
             # # This callback will be called on errors
             # self._lg_stab.error_cb.add_callback(self._stab_log_error)
             # Start the logging
             self._lg_stab.start()
+            self._lg_range.start()
         except KeyError as e:
             print('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
@@ -216,18 +214,18 @@ class call_backs():
         self.var_z_history.append(data['stateEstimate.z'])
         self.var_x_history.append(data['stateEstimate.x'])
         self.var_y_history.append(data['stateEstimate.y'])
-        self.front.append(data['range.front'])
-        self.back.append(data['range.back'])
+        # self.front.append(data['range.front'])
+        # self.back.append(data['range.back'])
         # self.right.append(data['range.right'])
         # self.left.append(data['range.left'])
 
-    # def _get_range(self, timestamp, data, logconf):
-    #     """This callback is called when range datas are received"""
+    def _get_range(self, timestamp, data, logconf):
+        """This callback is called when range datas are received"""
 
-    #     self.front.append(data['range.front'])
-    #     self.back.append(data['range.back'])
-    #     self.right.append(data['range.right'])
-    #     self.left.append(data['range.left'])
+        self.front.append(data['range.front'])
+        self.back.append(data['range.back'])
+        self.right.append(data['range.right'])
+        self.left.append(data['range.left'])
     
     def plot_log(self):
         plt.plot(self.var_z_history)

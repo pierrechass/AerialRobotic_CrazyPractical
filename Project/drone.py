@@ -1,3 +1,4 @@
+from token import RIGHTSHIFT
 import numpy as np
 import math as m
 from sympy.solvers import solve
@@ -23,7 +24,7 @@ class quad():
 
     def __init__(self, cf, id='radio://0/80/2M/E7E7E7E7E7',
                  pos_init=np.array([0, 0, 0]), vel=np.array([0, 0]),
-                 state=0, default_heigth=0.3, default_vel=0.05):
+                 state=0, default_heigth=0.3, default_vel=0.1):
         self.pos_init = pos_init
         self.pos = pos_init
         self.vel = vel
@@ -32,6 +33,7 @@ class quad():
         self.yaw = 0
         self.sensors = None
         self.state = state
+        self.right = True
         self.default_heigth = default_heigth
         self.default_vel = default_vel
         self.id = id
@@ -50,7 +52,7 @@ class quad():
     def take_off(self, heigth=0.3):
         self.motion_cmder.take_off(height=0.3, velocity=self.default_vel)
         self.is_flying = True
-        self.state = 4
+        self.state = 2
         time.sleep(1)
         return self.state
 
@@ -59,31 +61,30 @@ class quad():
         #Update pos & sensors
         self.update_pos()
 
-        self.sensors = np.array([self.cb.front[-1], 
-                                 self.cb.back[-1]])
+        self.sensors = np.array([self.cb.front[-1], self.cb.right[-1], 
+                                 self.cb.back[-1], self.cb.left[-1]])
 
+        self.check_sides()
         self.check_local()
 
+        if np.isclose(self.pos[0]%20, 0, rtol=1, atol=2.5):
+            self.check_neigborhood()
+
         if 500 - self.pos[0] < LAND_ZONE :
-            self.state = 4
+            self.pad_search()
 
-        if self.sensors[-1] < MIN_DISTANCE :
-           self.state = 5
-           print('land')
+        if self.sensors[-2] < MIN_DISTANCE :
+           self.land(0.2)
 
-        if self.once :
-            self.motion_cmder.turn_right(90)
-            self.once = False
-
-        self.motion_cmder.start_linear_motion(self.vel[0], self.vel[1], self.vel[2])
+        self.update_velocity(pos_ref_x=None,pos_ref_y=0,vel_x=self.vel[0], vel_y=self.vel[1])
         return self.state
 
     def local_nav(self):
         self.update_pos()
-        # self.sensors = np.array([self.multiranger.front, self.multiranger.right, 
-        #                          self.multiranger.back, self.multiranger.left])
+        self.check_sides()
         self.sensors = np.array([self.cb.front[-1], 
                                  self.cb.back[-1]])
+
         if(self.cb.front[-1] <= MIN_DISTANCE):
             self.vel = np.array([0,self.vel_local,0])
             pos_obstacle = [int(self.pos[0] + self.sensors[0]/10),int(self.pos[1])]
@@ -91,7 +92,6 @@ class quad():
         else :
             self.vel = np.array([0,0,0])
             self.state = 2
-            print('go to global')
         
         self.motion_cmder.start_linear_motion(self.vel[0], self.vel[1], self.vel[2])
         return self.state
@@ -105,59 +105,52 @@ class quad():
         return self.state
 
     def pad_search(self, verbose = False):
-
-        # Algo HERE
-        self.update_velocity(pos_ref_x=None,pos_ref_y=0,vel_x=0.12,vel_y=None)
-
+        self.vel = np.array([0.12,None,None])
         # If pad found then go to state path_found (5)
-        if self.pad.find_pad_out(self.cb.var_z_history,self.cb.var_x_history):      
+        if self.pad.find_pad_out(self.cb.var_z_history,self.cb.var_x_history,self.cb.var_y_history):      
             self.state=5
             self.motion_cmder.start_linear_motion(0,0,0) 
             time.sleep(3)
-        return self.state
 
     def pad_found(self):
         state = 1
         # Algo for landing in the pad
         while state !=4:
-            
+            self.update_pos()
             if self.pad.states_pad.get(state)=="border1":
                 self.update_velocity(pos_ref_x=None,pos_ref_y=0,vel_x=0.12,vel_y=None)
                     
-                if self.pad.find_pad_in(self.cb.var_z_history,self.cb.var_x_history):
+                if self.pad.find_pad_in(self.cb.var_z_history,self.cb.var_x_history,self.cb.var_y_history,var=0):
                     time.sleep(0.5)
                     self.motion_cmder.start_linear_motion(0,0,0) 
                     time.sleep(1)
                     state=2
-                    mid_pad=self.pad.pad_x1+1/2*(self.pad.pad_x2-self.pad.pad_x1)
-                    self.go_to(x_ref=mid_pad,y_ref=0,z_ref=None)
-            
+                    mid_pad_x=self.pad.pad_x1[0]+1/2*(self.pad.pad_x2[0]-self.pad.pad_x1[0])
+                    self.go_to(x_ref=mid_pad_x,y_ref=self.pad.pad_x1[1],z_ref=None)
             if self.pad.states_pad.get(state)=="border2":   
-                self.update_velocity(pos_ref_x=mid_pad,pos_ref_y=None,vel_x=None,vel_y=-0.12)
+                self.update_velocity(pos_ref_x=mid_pad_x,pos_ref_y=None,vel_x=None,vel_y=-0.12)
                 time.sleep(0.2)
-                if self.pad.find_pad_in(self.cb.var_z_history,self.cb.var_y_history,var=1):
+                if self.pad.find_pad_in(self.cb.var_z_history,self.cb.var_x_history,self.cb.var_y_history,var=1):
                     time.sleep(0.5)
                     self.motion_cmder.start_linear_motion(0,0,0) 
                     time.sleep(1)
-                    self.go_to(x_ref=mid_pad,y_ref=0,z_ref=None)
+                    self.go_to(x_ref=mid_pad_x,y_ref=self.pad.pad_x1[1],z_ref=None)
                     state=3
 
             if self.pad.states_pad.get(state)=="border3":    
-                self.update_velocity(pos_ref_x=mid_pad,pos_ref_y=None,vel_x=None,vel_y=0.12)
+                self.update_velocity(pos_ref_x=mid_pad_x,pos_ref_y=None,vel_x=None,vel_y=0.12)
                 time.sleep(0.2)
-                if self.pad.find_pad_in(self.cb.var_z_history,self.cb.var_y_history,var=2):  
+                if self.pad.find_pad_in(self.cb.var_z_history,self.cb.var_x_history,self.cb.var_y_history,var=2):  
                     time.sleep(0.5)
                     self.motion_cmder.start_linear_motion(0,0,0) 
                     time.sleep(1)
-                    mid_pad_y=self.pad.pad_y1+1/2*(self.pad.pad_y2-self.pad.pad_y1)
-                    self.go_to(x_ref=mid_pad,y_ref=mid_pad_y,z_ref=None)
+                    mid_pad_y=self.pad.pad_y1[1]+1/2*(self.pad.pad_y2[1]-self.pad.pad_y1[1])
+                    self.go_to(x_ref=mid_pad_x,y_ref=mid_pad_y,z_ref=None)
                     time.sleep(0.5)
-                    self.go_to(x_ref=mid_pad,y_ref=mid_pad_y,z_ref=0.2)
+                    self.go_to(x_ref=mid_pad_x,y_ref=mid_pad_y,z_ref=0.2)
                     state=4
 
         self.state = 6
-        return
-    def emergency_stop(self):
         return
 
     def update_pos(self):
@@ -193,12 +186,10 @@ class quad():
         disty300 = 300 - self.pos[1]
 
         if m.isclose(self.attitude[0]%360,0) :
-            print('here')
             if disty0 > disty300 :
                 vel = -VEL_LOCAL
             else :
                 vel = VEL_LOCAL
-            print(vel)
 
         elif m.isclose(self.attitude[0]%360,180):
             if disty0 > disty300 :
@@ -261,11 +252,55 @@ class quad():
 
     def check_local(self):
         if(self.cb.front[-1] >= MIN_DISTANCE):
-            self.vel = np.array([0.3,0,0])
+            self.vel = np.array([0.3,None,None])
+            obstacle = False
         else :
             self.compute_vel_local()
-            self.vel = np.array([0,0,0])
+            self.vel = np.array([None,None,None])
             self.state = 3
+            obstacle = True
+        return obstacle
+    
+    def check_neigborhood(self):
+        if self.right :
+            for i in range(7):
+                if self.cb.right[-1] > MIN_DISTANCE :
+                    self.motion_cmder.start_linear_motion(0,0.1,0)
+                    time.sleep(0.2)
+                else :
+                    self.motion_cmder.start_linear_motion(0,0,0)
+                    time.sleep(0.2)
+                obstacle = self.check_local()
+            time.sleep(0.5)
+            if  not obstacle :
+                self.motion_cmder.start_linear_motion(0,-0.2,0)
+                time.sleep(0.2)
+            self.right = not self.right
+        else :
+            for i in range(7):
+                if self.cb.left[-1] > MIN_DISTANCE :
+                    self.motion_cmder.start_linear_motion(0,-0.1,0)
+                    time.sleep(0.2)
+                else :
+                    self.motion_cmder.start_linear_motion(0,0,0)
+                    time.sleep(0.2)
+                obstacle = self.check_local()
+            time.sleep(0.5)
+            if not obstacle :
+                self.motion_cmder.start_linear_motion(0,0.2,0)
+                time.sleep(0.2)
+            self.right = not self.right
+    
+    def check_sides(self):
+        if self.cb.right[-1] < MIN_DISTANCE :
+            pos_obstacle = [int(self.pos[0]),int(self.pos[1] + self.cb.right[-1]/10)]
+            self.map.update_map_obstacle(pos_obstacle)
+
+        if self.cb.left[-1] < MIN_DISTANCE :
+            pos_obstacle = [int(self.pos[0]),int(self.pos[1] - self.cb.left[-1]/10)]
+            self.map.update_map_obstacle(pos_obstacle)
+
+
 
     def go_to(self,x_ref,y_ref,z_ref=None):
 
@@ -323,7 +358,6 @@ class quad():
 
         new_vel_x=update_vel[0]*m.cos(self.yaw)-update_vel[1]*m.sin(self.yaw)
         new_vel_y=update_vel[1]*m.cos(self.yaw)+update_vel[0]*m.sin(self.yaw)
-
         self.motion_cmder.start_linear_motion(new_vel_x,new_vel_y,update_vel[2]) 
         time.sleep(0.2)
         
