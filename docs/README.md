@@ -4,7 +4,7 @@ Crazyflie hardware practical for the Aerial Robots course at EPFL.
 In this practical, you will learn how to program a [Crazyflie](https://www.bitcraze.io/) to find and precisely land on a platform with the help of minimal sensory information. Additionally, you will use sensor readings to avoid the obstacles present in the environment.
 
 <p align="center">
-<img width=700 src="https://github.com/dronecourse-epfl/crazy-practical/blob/master/docs/pictures/crazyfly_objective_figure.png"/>
+<img width=700 src="https://github.com/pierrechass/AerialRobotic_CrazyPractical/blob/master/docs/pictures/crazyfly_objective_figure.png"/>
 </p>
 
 For more details on the task, submission, schedule and grading, please refer to the [moodle](https://moodle.epfl.ch/course/view.php?id=15799) page of the course.
